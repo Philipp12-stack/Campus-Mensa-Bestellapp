@@ -78,6 +78,6 @@ async function loadMenu() {
 }
 
 $('form').addEventListener('submit',async e=>{e.preventDefault();const status=$('status');status.className='status';status.textContent='';if(!selectedCategory){status.textContent='Bitte wähle ein Gericht.';status.classList.add('error');return}if(!$('time').value){status.textContent='Keine gültige Abholzeit mehr verfügbar.';status.classList.add('error');return}const btn=$('submit');btn.disabled=true;btn.textContent='Bestellung wird gesendet …';try{const payload={action:'order',date:selectedDate,category:selectedCategory,time:$('time').value,name:$('name').value.trim(),email:$('email').value.trim()};/* Apps Script antwortet bei Cross-Origin-POST häufig ohne lesbare CORS-Freigabe. text/plain vermeidet Preflight, die Antwort bleibt ggf. blockiert. */await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});status.textContent='Bestellung gesendet. Bitte prüfe die Bestellungen-Tabelle, ob sie gespeichert wurde. Eine Bestätigung kann diese Version technisch nicht sicher auslesen.';status.classList.add('success')}catch(err){status.textContent='Senden fehlgeschlagen. Bitte prüfe deine Verbindung und die Tabelle, bevor du erneut bestellst.';status.classList.add('error')}finally{btn.disabled=false;btn.textContent='Verbindlich vorbestellen'}});
-renderDays();renderTimes();loadMenu();
+ralert('JavaScript startet');renderDays();renderTimes();loadMenu();
 </script>
 </body></html>
