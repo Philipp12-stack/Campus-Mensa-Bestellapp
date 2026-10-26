@@ -44,7 +44,7 @@ async function loadMenu() {
   try {
     for (const day of days) {
       const date = dateKey(day);
-      const res = await fetch(API_URL + '?datum=' + encodeURIComponent(date));
+     const res = await fetch(API_URL + '?datum=' + encodeURIComponent(date), {redirect: 'follow'});
 
       if (!res.ok) {
         throw new Error('HTTP-Fehler ' + res.status);
