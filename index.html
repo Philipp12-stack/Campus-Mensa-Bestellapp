@@ -34,7 +34,49 @@ function availableDays(){const days=[];const d=new Date();d.setHours(12,0,0,0);w
 function renderDays(){const days=availableDays();if(!days.some(d=>dateKey(d)===selectedDate))selectedDate=dateKey(days[0]);$('days').replaceChildren();for(const d of days){const key=dateKey(d);const b=document.createElement('button');b.type='button';b.className='day'+(key===selectedDate?' active':'');b.textContent=niceDate(d);b.addEventListener('click',()=>{selectedDate=key;selectedCategory='';renderDays();renderMeals();renderTimes();renderWeek()});$('days').appendChild(b)}}
 function renderMeals(){const el=$('meals');el.replaceChildren();const list=menu.filter(m=>m.date===selectedDate);if(!list.length){const p=document.createElement('p');p.className='muted';p.textContent='Für diesen Tag ist noch kein Speiseplan hinterlegt.';el.appendChild(p);return}for(const category of categories){const m=list.find(x=>x.category===category);if(!m)continue;const label=document.createElement('label');label.className='meal';const radio=document.createElement('input');radio.type='radio';radio.name='dish';radio.value=category;radio.checked=selectedCategory===category;radio.addEventListener('change',()=>{selectedCategory=category});const desc=document.createElement('span');desc.className='desc';const small=document.createElement('small');small.textContent=category;const strong=document.createElement('strong');strong.textContent=m.dish;desc.append(small,strong);const price=document.createElement('span');price.className='price';price.textContent=Number(m.price).toLocaleString('de-DE',{style:'currency',currency:'EUR'});label.append(radio);const img=mealImage(m);if(img)label.append(img);label.append(desc,price);el.appendChild(label)}}
 function renderTimes(){const select=$('time');select.replaceChildren();const now=new Date();for(let m=660;m<=840;m+=15){const time=`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;if(selectedDate===dateKey(now) && time<=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`)continue;const opt=document.createElement('option');opt.value=time;opt.textContent=time+' Uhr';select.appendChild(opt)}}
-async function loadMenu(){if(API_URL.includes('HIER_')){$('meals').textContent='Bitte zuerst die Apps-Script-URL im Code eintragen.';return}try{const res=await fetch(API_URL+'?action=menu');const data=await res.json();if(!data.ok)throw Error(data.error||'Ladefehler');menu=data.menu;renderMeals();renderWeek()}catch(e){$('meals').textContent='Speiseplan konnte nicht geladen werden: '+e.message}}
+
+async function loadMenu() {
+  const days = availableDays();
+  const results = [];
+
+  $('meals').textContent = 'Speiseplan wird geladen …';
+
+  try {
+    for (const day of days) {
+      const date = dateKey(day);
+      const res = await fetch(API_URL + '?datum=' + encodeURIComponent(date));
+
+      if (!res.ok) {
+        throw new Error('HTTP-Fehler ' + res.status);
+      }
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Ladefehler');
+      }
+
+      for (const gericht of data.gerichte) {
+        results.push({
+          date: date,
+          category: gericht.kategorie,
+          dish: gericht.gericht,
+          price: gericht.preis,
+          imageUrl: gericht.bildURL || ''
+        });
+      }
+    }
+
+    menu = results;
+    renderMeals();
+    renderWeek();
+
+  } catch (e) {
+    $('meals').textContent =
+      'Speiseplan konnte nicht geladen werden: ' + e.message;
+  }
+}
+
 $('form').addEventListener('submit',async e=>{e.preventDefault();const status=$('status');status.className='status';status.textContent='';if(!selectedCategory){status.textContent='Bitte wähle ein Gericht.';status.classList.add('error');return}if(!$('time').value){status.textContent='Keine gültige Abholzeit mehr verfügbar.';status.classList.add('error');return}const btn=$('submit');btn.disabled=true;btn.textContent='Bestellung wird gesendet …';try{const payload={action:'order',date:selectedDate,category:selectedCategory,time:$('time').value,name:$('name').value.trim(),email:$('email').value.trim()};/* Apps Script antwortet bei Cross-Origin-POST häufig ohne lesbare CORS-Freigabe. text/plain vermeidet Preflight, die Antwort bleibt ggf. blockiert. */await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});status.textContent='Bestellung gesendet. Bitte prüfe die Bestellungen-Tabelle, ob sie gespeichert wurde. Eine Bestätigung kann diese Version technisch nicht sicher auslesen.';status.classList.add('success')}catch(err){status.textContent='Senden fehlgeschlagen. Bitte prüfe deine Verbindung und die Tabelle, bevor du erneut bestellst.';status.classList.add('error')}finally{btn.disabled=false;btn.textContent='Verbindlich vorbestellen'}});
 renderDays();renderTimes();loadMenu();
 </script>
